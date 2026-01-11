@@ -117,7 +117,7 @@ python -m pytest -q
 ├─ assets/                   # README screenshots
 ├─ requirements.txt
 ├─ requirements-dev.txt
-└─ .github/workflows/        # CI (if enabled)
+└─ .github/workflows/        # CI (GitHub Actions)
 ```
 
 ---
