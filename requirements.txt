@@ -1,13 +1,20 @@
-scikit-learn==1.4.2
-numpy==1.26.4
-scipy==1.11.4
-pandas==2.2.3
-joblib==1.4.2
 streamlit==1.54.0
-pillow==12.1.1
-plotly==5.24.1
-xgboost==3.0.2
 fastapi==0.128.5
-starlette==0.49.3
 uvicorn==0.30.6
 httpx==0.28.1
+
+pandas==2.2.3
+plotly==6.0.0
+joblib==1.4.2
+pillow==12.1.1
+xgboost==3.0.2
+
+# ML stack (artifact-friendly on 3.11/3.12; wheel-available on 3.13)
+scikit-learn==1.4.2; python_version < "3.13"
+scikit-learn==1.6.1; python_version >= "3.13"
+
+numpy==1.26.4; python_version < "3.13"
+numpy==2.2.2; python_version >= "3.13"
+
+scipy==1.11.4; python_version < "3.13"
+scipy==1.14.1; python_version >= "3.13"
