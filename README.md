@@ -86,7 +86,7 @@ Key modules:
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.11+ (recommended). Streamlit Cloud runs on Python 3.13.
 - Docker Desktop (for Docker Compose quickstart)
 
 ---
@@ -287,6 +287,8 @@ CI runs: Ruff + Pytest + Docker build stage (`.github/workflows/ci.yml`).
 
 This repo ships **pre-trained serialized artifacts** (`artifacts/*.joblib`). To keep the project runnable out of the box, the ML/data stack is **pinned** to the training-time versions.
 
+> Note (Streamlit Cloud): Streamlit Cloud runs on Python 3.13, so `requirements.txt` uses environment markers to keep the artifact stack stable on Python 3.11/3.12 while remaining wheel-installable on Python 3.13.
+
 If you want to upgrade dependencies, treat it as a **refresh cycle**:
 
 1) upgrade deps  
@@ -330,6 +332,3 @@ See: `docs/CASE_STUDY.md`
 
 - Code license: MIT — see `LICENSE`.
 - Dataset is not redistributed. If you download it, follow the dataset terms — see `DATA_LICENSE.md`.
-
----
-
