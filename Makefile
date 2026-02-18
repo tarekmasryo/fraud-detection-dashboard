@@ -1,53 +1,74 @@
-.PHONY: help install dev run lint lint-fix format test check precommit
+# Makefile (Windows / cmd.exe) — one-button workflow
+# Usage: make all
 
-PY ?= python
-APP_FILE ?= app.py
+SHELL := cmd.exe
+.SHELLFLAGS := /C
+
+PY := .venv\Scripts\python.exe
+
+.PHONY: help venv deps install format lint test api ui all clean
 
 help:
-	@echo "Targets:"
-	@echo "  install      Install runtime deps (requirements.txt if present)"
-	@echo "  dev          Install dev deps (requirements-dev.txt if present)"
-	@echo "  run          Run app (Streamlit by default)"
-	@echo "  lint         Run ruff lint"
-	@echo "  lint-fix     Run ruff lint with fixes"
-	@echo "  format       Format code with ruff"
-	@echo "  check        Lint + format check + tests"
-	@echo "  test         Run pytest"
-	@echo "  precommit    Install pre-commit hooks"
+	@echo Targets:
+	@echo   make venv     - create .venv
+	@echo   make deps     - install requirements
+	@echo   make install  - pip install -e .
+	@echo   make format   - ruff format --check
+	@echo   make lint     - ruff check
+	@echo   make test     - pytest
+	@echo   make api      - run FastAPI (uvicorn)
+	@echo   make ui       - run Streamlit UI
+	@echo   make all      - deps+checks then launch api+ui
+	@echo   make clean    - remove .venv/.pytest_cache/__pycache__
 
-install:
-	$(PY) -m pip install -U pip
-ifneq ($(wildcard requirements.txt),)
-	$(PY) -m pip install -r requirements.txt
-endif
-	@$(PY) -m pip check || true
+venv:
+	@if exist ".venv" (echo .venv already exists) else (py -3.11 -m venv .venv)
 
-dev:
-	$(PY) -m pip install -U pip
-ifneq ($(wildcard requirements-dev.txt),)
-	$(PY) -m pip install -r requirements-dev.txt
-endif
-	@$(PY) -m pip check || true
+deps: venv
+	@"$(PY)" -m pip install -U pip setuptools wheel
+	@"$(PY)" -m pip install -r requirements.txt -r requirements-dev.txt
 
-run:
-	$(PY) -m streamlit run $(APP_FILE)
+install: deps
+	@"$(PY)" -m pip install -e .
 
-lint:
-	$(PY) -m ruff check .
+format: install
+	@"$(PY)" -m ruff format --check .
 
-lint-fix:
-	$(PY) -m ruff check . --fix --exit-non-zero-on-fix
+lint: install
+	@"$(PY)" -m ruff check .
 
-format:
-	$(PY) -m ruff format .
+test: install
+	@"$(PY)" -m pytest -q
 
-test:
-	$(PY) -m pytest -q
+api: install
+	@"$(PY)" -m uvicorn fraud_dashboard.api.main:app --reload --reload-dir src --host 127.0.0.1 --port 8000
 
-check: lint
-	$(PY) -m ruff format --check .
-	$(PY) -m pytest -q
+ui: install
+	@"$(PY)" -m streamlit run streamlit_app.py
 
-precommit:
-	$(PY) -m pip install -U pre-commit
-	pre-commit install
+all: format lint test
+	@echo Launching API + UI in separate terminals...
+	@start "API" cmd /k ""$(PY)" -m uvicorn fraud_dashboard.api.main:app --reload --reload-dir src --host 127.0.0.1 --port 8000"
+	@start "UI"  cmd /k ""$(PY)" -m streamlit run streamlit_app.py"
+	@echo API Docs: http://127.0.0.1:8000/docs
+	@echo UI      : http://localhost:8501
+
+clean:
+	@if exist ".venv" rmdir /s /q ".venv"
+	@if exist ".pytest_cache" rmdir /s /q ".pytest_cache"
+	@for /d /r %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+
+
+.PHONY: rebuild-venv fresh doctor
+
+doctor:
+	@echo PYVENV:
+	@if exist ".venv\pyvenv.cfg" type ".venv\pyvenv.cfg" else echo (no venv yet)
+	@echo PYEXE:
+	@if exist ".venv\Scripts\python.exe" (".venv\Scripts\python.exe" -c "import sys; print(sys.executable)") else echo (missing .venv\Scripts\python.exe)
+
+rebuild-venv:
+	@if exist ".venv" rmdir /s /q ".venv"
+	@py -3.11 -m venv .venv
+
+fresh: rebuild-venv all

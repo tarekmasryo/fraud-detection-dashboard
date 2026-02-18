@@ -1,0 +1,16 @@
+[run]
+branch = True
+source =
+    src
+# Streamlit UI is smoke-tested manually; unit-test coverage gate focuses on core + API.
+omit =
+    */fraud_dashboard/ui/*
+    */fraud_dashboard/ui/**/*
+    src/fraud_dashboard/ui/*
+    src/fraud_dashboard/ui/**/*
+
+[report]
+show_missing = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:

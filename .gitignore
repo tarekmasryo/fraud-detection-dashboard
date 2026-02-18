@@ -1,77 +1,91 @@
 # =========================
-# Python
+# Python / Virtual Envs
 # =========================
-__pycache__/
-*.py[cod]
-*.pyd
-*.egg-info/
-
-# Packaging / build
-dist/
-build/
-pip-wheel-metadata/
-
-# Virtual environments
 .venv/
 venv/
 ENV/
-.venv.bak/
-venv.bak/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.dylib
+*.pyd
 
-# Environment variables / secrets
-.env
-.env.*
-!.env.example
-
-# Caches
+# =========================
+# Testing / QA / Linting
+# =========================
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-.pytype/
-.pyre/
-
-# =========================
-# Tests / coverage
-# =========================
 .coverage
 coverage.xml
 htmlcov/
+.pytype/
 .tox/
 .nox/
-*.cover
-*.py,cover
 
 # =========================
-# Jupyter / notebooks
+# Build / Packaging
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# =========================
+# Jupyter (optional)
 # =========================
 .ipynb_checkpoints/
-*.ipynb~
 
 # =========================
-# Streamlit (keep config, ignore secrets)
-# =========================
-.streamlit/secrets.toml
-
 # Logs
+# =========================
 *.log
-logs/
-
-# Local databases (optional but common)
-*.db
-*.sqlite
-*.sqlite3
 
 # =========================
 # OS / IDE
 # =========================
 .DS_Store
 Thumbs.db
-.vscode/
 .idea/
-*.iml
-.history/
+.vscode/
 
 # =========================
-# Git
+# Local env (DO NOT COMMIT SECRETS)
 # =========================
-*.orig
+.env
+.env.*
+!.env.example
+
+# =========================
+# Local data / artifacts (tweak to your repo)
+# =========================
+data/*
+!data/.gitkeep
+!data/demo_creditcard.csv
+
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/*.joblib
+!artifacts/*.json
+
+# If you keep small demo assets, add explicit allowlist rules above.
+
+# =========================
+# Docker / Compose local overrides
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Cache / temp
+# =========================
+.cache/
+.tmp/
+tmp/
+
+# Accidental terminal output files
+
+# Generated specs
+openapi.json

@@ -1,12 +1,20 @@
 {
-  "RF": {
-    "threshold": 0.0534831589433206,
-    "f1_valid": 0.8817204301070282
-  },
-  "XGB": {
-    "threshold": 0.22812701761722565,
-    "f1_valid": 0.8756756756751775
-  },
+  "COST_FN": 10.0,
   "COST_FP": 1.0,
-  "COST_FN": 10.0
+  "RF_Thr_MinCost": 0.0534831589433206,
+  "RF_Thr_P90": 0.65,
+  "XGB_Thr_MinCost": 0.22812701761722565,
+  "XGB_Thr_P90": 0.75,
+  "artifact_version": "v2",
+  "default_model": "random_forest",
+  "models": {
+    "random_forest": {
+      "f1_valid": 0.8817204301070282,
+      "threshold": 0.0534831589433206
+    },
+    "xgboost": {
+      "f1_valid": 0.8756756756751775,
+      "threshold": 0.22812701761722565
+    }
+  }
 }

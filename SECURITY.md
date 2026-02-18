@@ -1,18 +1,14 @@
 # Security Policy
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-Please do **not** create a public GitHub issue for security vulnerabilities.
+If you believe you found a security issue, please open a private report via GitHub Security Advisories (preferred) or open an issue with **no sensitive details**.
 
-Instead, use GitHub's private reporting flow:
+## Dependency updates
 
-1. Go to this repository → **Security** tab
-2. Open **Advisories**
-3. Click **New draft security advisory**
-4. Include:
-   - a short description of the issue
-   - steps to reproduce (proof-of-concept if safe)
-   - affected versions/commits (if known)
-   - impact assessment (what an attacker can do)
+This repository ships **pre-trained serialized artifacts** in `artifacts/`. To keep the repo runnable "out of the box", the ML/data stack is pinned on `main`.
 
-We will respond as soon as possible and coordinate a responsible disclosure.
+- CI runs `pip-audit` in **non-blocking** mode (visibility without breaking builds).
+- Dependabot ignores ML/data stack upgrades on `main` (`numpy`, `scipy`, `scikit-learn`, `xgboost`, `joblib`, `pandas`, `streamlit`).
+
+For production use, follow a refresh cycle: upgrade deps → re-export artifacts → rerun tests → release.

@@ -1,38 +1,35 @@
+[build-system]
+requires = ["setuptools>=78.1.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "fraud-detection-dashboard"
+version = "1.0.0"
+description = "Decision-first fraud detection dashboard with artifact loading, validation, and Docker."
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = [
-  ".venv",
-  "venv",
-  "__pycache__",
-  ".pytest_cache",
-  ".ruff_cache",
-  ".mypy_cache",
-  "build",
-  "dist",
-  "artifacts",
-  "models",
-  "outputs",
-  "runs",
-  "data",
-  "datasets",
-]
+extend-exclude = ["artifacts", "data"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
+select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
 
-[tool.ruff.lint.isort]
-known-first-party = []
-combine-as-imports = true
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**.py" = ["S101"]  # allow assert in tests (safe)
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-
 [tool.pytest.ini_options]
-testpaths = ["tests"]
 addopts = "-q"
+testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = [
+  "ignore:.*If you are loading a serialized model.*:UserWarning",
+  "ignore:.*InconsistentVersionWarning.*:UserWarning",
+]
