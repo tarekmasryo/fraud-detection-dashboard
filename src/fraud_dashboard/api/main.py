@@ -24,13 +24,15 @@ class PredictRequest(BaseModel):
     model: str | None = Field(
         None, description="Model key (e.g., calibrated_rf, xgb). Defaults to repo policy."
     )
-    threshold: float | None = Field(None, description="Override decision threshold (0..1).")
+    threshold: float | None = Field(
+        None, ge=0.0, le=1.0, description="Override decision threshold (0..1)."
+    )
 
 
 class PredictBatchRequest(BaseModel):
     records: list[dict[str, Any]] = Field(..., min_length=1, description="Batch of records.")
     model: str | None = Field(None)
-    threshold: float | None = None
+    threshold: float | None = Field(None, ge=0.0, le=1.0)
 
 
 class PredictResponse(BaseModel):
@@ -93,7 +95,7 @@ def _resolve_policy(model: str | None, threshold: float | None) -> tuple[str, fl
 
     th = float(threshold if threshold is not None else get_model_threshold(thresholds, model_key))
     if not (0.0 <= th <= 1.0):
-        raise HTTPException(status_code=500, detail=f"Invalid threshold for '{model_key}': {th}")
+        raise HTTPException(status_code=400, detail=f"Invalid threshold for '{model_key}': {th}")
     return model_key, th
 
 

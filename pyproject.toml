@@ -12,7 +12,7 @@ where = ["src"]
 name = "fraud-detection-dashboard"
 version = "1.0.0"
 description = "Decision-first fraud detection dashboard with artifact loading, validation, and Docker."
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 readme = "README.md"
 license = {text = "MIT"}
 

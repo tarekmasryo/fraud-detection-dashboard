@@ -142,13 +142,13 @@ class PredictionEnginePage:
 
     def _ensure_features(self, df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         df2 = build_engineered_features(df)
-        cols = [c for c in self.expected_features if c in df2.columns]
         missing = [c for c in self.expected_features if c not in df2.columns]
         if missing:
-            st.warning(
+            st.error(
                 f"Missing required columns: {missing[:12]}{' ...' if len(missing) > 12 else ''}"
             )
-        return df2[cols].copy(), cols
+            st.stop()
+        return df2[self.expected_features].copy(), self.expected_features
 
     def render(
         self,

@@ -144,8 +144,8 @@ def test_predict_non_numeric_400(client: TestClient) -> None:
     assert "Non-numeric" in r.text or "missing values" in r.text
 
 
-def test_predict_invalid_threshold_500(client: TestClient) -> None:
+def test_predict_invalid_threshold_400_or_422(client: TestClient) -> None:
     rec = _load_demo_record()
     r = client.post("/predict", json={"record": rec, "model": "rf", "threshold": 2.0})
-    assert r.status_code == 500
-    assert "Invalid threshold" in r.text
+    assert r.status_code in {400, 422}
+    assert "Invalid threshold" in r.text or "less than or equal to 1" in r.text

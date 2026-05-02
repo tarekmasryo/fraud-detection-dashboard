@@ -1,67 +1,81 @@
 # Fraud Detection Dashboard — Decision-Ready UI + FastAPI Inference
 
-[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![CI](https://github.com/tarekmasryo/fraud-detection-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/tarekmasryo/fraud-detection-dashboard/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-inference-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A **decision-first** fraud screening mini-system with a clean separation between **inference** and **analytics UI**:
+A **decision-ready fraud screening dashboard** with a clean split between **model inference** and **operator-facing analytics**.
 
-- **FastAPI** inference service: `/health`, `/metadata`, `/predict`, `/predict/batch`
-- **Streamlit** dashboard: data overview + batch scoring + thresholds + metrics + segments
-- **Pre-trained artifacts** in `artifacts/`: **RandomForest + XGBoost** + **threshold policy**
+The project combines:
 
-> Runs out-of-the-box **with demo data**. For meaningful results, upload real labeled data (or place a compatible CSV locally).
+- **FastAPI** inference endpoints for single-record and batch scoring
+- **Streamlit** dashboard for exploration, scoring, thresholds, metrics, and segment review
+- **Pre-trained RandomForest and XGBoost artifacts** with a reusable threshold policy
+- **Docker Compose** setup for a reproducible API + UI runtime
+
+> The app runs out of the box with synthetic demo data. For real analysis, upload a compatible labeled CSV or place the expected dataset locally.
 
 ---
 
-## What you get
+## What this repo demonstrates
 
-### Inference (FastAPI)
-- Strict input validation (schema-driven)
-- Single-record and batch scoring
-- Model selection (`rf` / `xgb`) and threshold control
+### FastAPI inference service
+
+- Schema-driven request validation
+- Single-record and batch prediction endpoints
+- Model selection with `rf` / `xgb`
+- Configurable decision threshold
 - Low-latency JSON responses with measured `latency_ms`
+- Metadata endpoint exposing feature schema and model policy
 
-### Analytics UI (Streamlit)
-- Upload a CSV or auto-load a local dataset (if present)
-- Built-in **synthetic demo dataset** when no data is available
-- **Decision policy presets** + custom thresholding
-- Metrics + diagnostic plots + segmented analysis
+### Streamlit analytics dashboard
+
+- CSV upload and local dataset auto-loading
+- Synthetic fallback dataset with the expected schema
+- Batch scoring workflow
+- Threshold presets and custom threshold control
+- Metrics, diagnostic plots, and segmented review views
+- Data quality checks before prediction
 
 ---
 
 ## Decision policy presets
 
-Policy presets are just **safe defaults** for the operating threshold:
+Policy presets provide practical defaults for the operating threshold.
 
 | Preset | Intent | Typical effect |
 |---|---|---|
-| **Strict** | Minimize false positives | Higher threshold → fewer flagged cases, may miss more fraud |
-| **Balanced** | Default trade-off | Mid threshold → balanced precision/recall |
-| **Lenient** | Maximize recall | Lower threshold → catch more fraud, more false positives |
+| **Strict** | Reduce false positives | Higher threshold → fewer flagged transactions, more missed fraud risk |
+| **Balanced** | Default operating trade-off | Mid threshold → balanced precision/recall behavior |
+| **Lenient** | Increase fraud capture | Lower threshold → more flagged transactions, more review load |
 
-You can always override the threshold manually in the UI.
+You can override the threshold manually from the UI or API request.
 
 ---
 
 ## Dashboard preview
 
 ### Data overview
-![Data](assets/data_overview.png)
+
+![Data overview](assets/data_overview.png)
 
 ### Prediction engine
-![Prediction](assets/prediction_engine.png)
+
+![Prediction engine](assets/prediction_engine.png)
 
 ### Model metrics
-![Metrics](assets/model_metrics.png)
+
+![Model metrics](assets/model_metrics.png)
 
 ### Model insights
-![Insights](assets/model_insights.png)
 
-### Data quality & segments
-![Segments](assets/data_quality.png)
+![Model insights](assets/model_insights.png)
+
+### Data quality and segments
+
+![Data quality and segments](assets/data_quality.png)
 
 ---
 
@@ -69,33 +83,90 @@ You can always override the threshold manually in the UI.
 
 ```mermaid
 flowchart LR
-  DATA["CSV upload / auto-load / synthetic demo"] --> UI["Streamlit UI"]
+  DATA["CSV upload / local dataset / synthetic demo"] --> UI["Streamlit UI"]
   UI -->|"httpx: /metadata /predict /predict/batch"| API["FastAPI Inference API"]
-  API -->|"load once at startup"| ART["artifacts/ (models + metadata + thresholds)"]
+  API -->|"load once at startup"| ART["artifacts/ models + metadata + thresholds"]
 ```
 
 Key modules:
 
-- `src/fraud_dashboard/api/` — FastAPI app (loads artifacts once, validates input, returns strict JSON)
-- `src/fraud_dashboard/ui/` — Streamlit UI (calls the API via `httpx`)
-- `src/fraud_dashboard/data/` — schema validation + synthetic demo generator
-- `artifacts/` — serialized models + `metadata.json` + `thresholds.json`
-- `tests/` — API + artifact loading + contract sanity checks
+- `src/fraud_dashboard/api/` — FastAPI app, artifact loading, validation, and response contracts
+- `src/fraud_dashboard/ui/` — Streamlit dashboard and API client workflow
+- `src/fraud_dashboard/data/` — schema helpers and synthetic demo data generator
+- `artifacts/` — serialized models, feature metadata, and threshold policy
+- `tests/` — API, artifact-loading, and contract checks
 
 ---
 
 ## Prerequisites
 
-- Python 3.11+ (recommended). Streamlit Cloud runs on Python 3.13.
-- Docker Desktop (for Docker Compose quickstart)
+- **Python 3.11**
+- **Docker Desktop** if you use the Docker Compose quickstart
+
+> **Runtime note:** This project ships pre-trained `joblib` artifacts built for the Python 3.11 ML stack. If you upgrade Python or core ML dependencies, re-export the artifacts and update `artifacts/metadata.json`.
 
 ---
 
-## Quickstart (local)
+## Quickstart with Docker Compose
 
-### 1) Create venv + install
+This is the most reproducible way to run both services.
 
-**Windows PowerShell**
+```bash
+docker compose up --build
+```
+
+Run in the background:
+
+```bash
+docker compose up -d --build
+```
+
+View logs:
+
+```bash
+docker compose logs -f
+```
+
+Stop the services:
+
+```bash
+docker compose down
+```
+
+Open:
+
+- API: `http://127.0.0.1:8000`
+- API docs: `http://127.0.0.1:8000/docs`
+- UI: `http://127.0.0.1:8501`
+
+The UI container calls the API at `http://api:8000` through Docker Compose service DNS.
+
+### Port already allocated
+
+If port `8501` is already in use:
+
+- stop the process or container using the port, or
+- change the host mapping in `docker-compose.yml`, for example:
+
+```yaml
+ports:
+  - "8502:8501"
+```
+
+Then re-run:
+
+```bash
+docker compose up --build
+```
+
+---
+
+## Quickstart locally
+
+### 1. Create a virtual environment and install dependencies
+
+#### Windows PowerShell
+
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -104,7 +175,8 @@ pip install -r requirements.txt -r requirements-dev.txt
 pip install -e .
 ```
 
-**Linux/macOS**
+#### Linux / macOS
+
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
@@ -113,93 +185,70 @@ pip install -r requirements.txt -r requirements-dev.txt
 pip install -e .
 ```
 
-### 2) Run the API
+### 2. Run the API
 
-Recommended (repo entrypoint):
+Recommended repo entrypoint:
+
 ```bash
 python api.py
 ```
 
-Alternative (standard Uvicorn):
+Standard Uvicorn entrypoint:
+
 ```bash
-uvicorn fraud_dashboard.api.app:app --host 127.0.0.1 --port 8000
+uvicorn fraud_dashboard.api.main:app --host 127.0.0.1 --port 8000
 ```
 
 Open:
+
 - API docs: `http://127.0.0.1:8000/docs`
 - Health: `http://127.0.0.1:8000/health`
 - Metadata: `http://127.0.0.1:8000/metadata`
 
-### 3) Run the UI
+### 3. Run the Streamlit UI
+
 ```bash
 python -m streamlit run app.py
 ```
 
-Open: `http://127.0.0.1:8501`
-
-> On Windows, prefer `python -m streamlit ...` to ensure you're using the venv-installed Streamlit (avoid global `AppData\Roaming` installs).
-
-> Streamlit Cloud entrypoint is `streamlit_app.py`. Local entrypoint is `app.py`.
-
----
-
-## Quickstart (Docker Compose)
-
-Runs two containers: `api` and `ui`.
-
-### Run
-```bash
-docker compose up --build
-```
-
-### Run in background (optional)
-```bash
-docker compose up -d --build
-```
-
-### Logs
-```bash
-docker compose logs -f
-```
-
-### Stop
-```bash
-docker compose down
-```
-
 Open:
-- API: `http://127.0.0.1:8000`
+
 - UI: `http://127.0.0.1:8501`
 
-The UI container calls the API at `http://api:8000` via Compose service DNS.
-
-### Troubleshooting: port is already allocated
-
-If you see `Bind for 0.0.0.0:8501 failed: port is already allocated`:
-
-- Stop the process/container using the port, **or**
-- Change the host port mapping in `docker-compose.yml` (e.g. `"8502:8501"`) and re-run `docker compose up --build`.
+> On Windows, `python -m streamlit ...` is preferred because it uses the Streamlit package installed inside the active virtual environment.
 
 ---
 
-## Data (optional)
+## Streamlit Community Cloud
 
-The UI supports **uploaded CSVs**.
+Use:
 
-Auto-load behavior:
-- If `creditcard.csv` exists in one of the search paths below, the UI loads it automatically.
-- Otherwise, the UI generates a **synthetic demo dataset** (same schema) so the dashboard remains runnable.
+- Entry point: `streamlit_app.py`
+- Python version: `3.11`
 
-Default search paths:
+Select Python 3.11 from the deployment settings before launching the app.
 
-- `data/creditcard.csv` *(recommended)*
-- `creditcard.csv` *(repo root)*
-- `data/demo_creditcard.csv`
-- `/mnt/data/creditcard.csv`
+For the most reproducible local or portfolio demo, Docker Compose is recommended.
 
-Dataset sources are **not redistributed** in this repo. See `DATA_LICENSE.md` for attribution and terms.
+---
 
-### Download via Kaggle CLI (optional)
+## Data
+
+The UI supports uploaded CSV files with the expected feature schema.
+
+Auto-load order:
+
+1. `data/creditcard.csv`
+2. `creditcard.csv`
+3. `data/demo_creditcard.csv`
+4. `/mnt/data/creditcard.csv`
+
+If no compatible dataset is found, the app generates a synthetic demo dataset so the dashboard remains runnable.
+
+Dataset files are **not redistributed** in this repository. See `DATA_LICENSE.md` for attribution and terms.
+
+### Optional Kaggle CLI download
+
 ```bash
 pip install kaggle
 kaggle datasets download -d mlg-ulb/creditcardfraud -p data --unzip
@@ -211,48 +260,56 @@ kaggle datasets download -d mlg-ulb/creditcardfraud -p data --unzip
 
 Environment variables:
 
-- `FRAUD_API_URL` (preferred): FastAPI base URL for the Streamlit UI  
-  Examples:
-  - local: `http://127.0.0.1:8000`
-  - compose: `http://api:8000`
-- `API_BASE_URL` (back-compat): same purpose
+| Variable | Purpose | Example |
+|---|---|---|
+| `FRAUD_API_URL` | Preferred FastAPI base URL for the Streamlit UI | `http://127.0.0.1:8000` |
+| `API_BASE_URL` | Backward-compatible API URL variable | `http://api:8000` |
 
-See: `.env.example`
+See `.env.example`.
 
 ---
 
 ## API usage
 
 ### Endpoints
+
 - `GET /health`
 - `GET /metadata`
 - `POST /predict`
 - `POST /predict/batch`
 
-### Example request (Python)
+### Python request example
+
 ```python
 import httpx
 
-meta = httpx.get("http://127.0.0.1:8000/metadata").json()
-features = meta["schema"]["features"]
+api_url = "http://127.0.0.1:8000"
 
-record = {f: 0.0 for f in features}
-resp = httpx.post(
-    "http://127.0.0.1:8000/predict",
-    json={"record": record, "model": "rf"},
-).json()
-print(resp)
+metadata = httpx.get(f"{api_url}/metadata").json()
+features = metadata["schema"]["features"]
+
+record = {feature: 0.0 for feature in features}
+
+response = httpx.post(
+    f"{api_url}/predict",
+    json={
+        "record": record,
+        "model": "rf",
+    },
+)
+
+print(response.json())
 ```
 
-### Example request (PowerShell)
+### PowerShell request example
+
 ```powershell
 ./scripts/predict.ps1 -ApiUrl "http://127.0.0.1:8000" -Model rf
 ```
 
-> Model + threshold can be passed in the request body, or via query parameters for quick manual testing. If both are present, query parameters take precedence.
+Model and threshold can be passed in the request body or as query parameters. If both are provided, query parameters take precedence.
 
-### Response format
-A successful `/predict` response is strict JSON:
+### Example response
 
 ```json
 {
@@ -266,7 +323,7 @@ A successful `/predict` response is strict JSON:
 
 ---
 
-## Testing & quality gates
+## Testing and quality gates
 
 ```bash
 ruff check .
@@ -274,27 +331,35 @@ ruff format --check .
 pytest -q
 ```
 
-Optional (visibility only):
+Optional dependency audit:
+
 ```bash
 pip-audit
 ```
 
-CI runs: Ruff + Pytest + Docker build stage (`.github/workflows/ci.yml`).
+CI runs Ruff, Pytest, and the Docker build stage defined in `.github/workflows/ci.yml`.
 
 ---
 
-## Dependency policy (artifact-locked)
+## Runtime compatibility
 
-This repo ships **pre-trained serialized artifacts** (`artifacts/*.joblib`). To keep the project runnable out of the box, the ML/data stack is **pinned** to the training-time versions.
+The repository includes pre-trained serialized artifacts:
 
-> Note (Streamlit Cloud): Streamlit Cloud runs on Python 3.13, so `requirements.txt` uses environment markers to keep the artifact stack stable on Python 3.11/3.12 while remaining wheel-installable on Python 3.13.
+```text
+artifacts/*.joblib
+artifacts/metadata.json
+artifacts/thresholds.json
+```
 
-If you want to upgrade dependencies, treat it as a **refresh cycle**:
+The runtime is pinned to the Python 3.11 ML stack used for the exported artifacts.
 
-1) upgrade deps  
-2) re-export artifacts (via `scripts/train.py`)  
-3) update `artifacts/metadata.json`  
-4) re-run tests  
+If you upgrade Python or core ML dependencies, treat it as an artifact refresh cycle:
+
+1. Upgrade dependencies.
+2. Re-export artifacts with `scripts/train.py`.
+3. Update `artifacts/metadata.json`.
+4. Re-run the test suite.
+5. Rebuild the Docker image.
 
 ---
 
@@ -302,13 +367,13 @@ If you want to upgrade dependencies, treat it as a **refresh cycle**:
 
 ```text
 .
-├─ api.py                     # FastAPI entrypoint (robust for src layout)
+├─ api.py                     # FastAPI entrypoint for local runs
 ├─ app.py                     # Local Streamlit entrypoint
-├─ streamlit_app.py           # Streamlit Cloud entrypoint
-├─ src/                       # package code (src layout)
-├─ artifacts/                 # pre-trained models + threshold policy
-├─ scripts/                   # utility scripts (PowerShell + training)
-├─ tests/                     # unit + contract tests
+├─ streamlit_app.py           # Streamlit Community Cloud entrypoint
+├─ src/                       # Package source code
+├─ artifacts/                 # Pre-trained models and threshold policy
+├─ scripts/                   # Utility scripts and training/export helpers
+├─ tests/                     # Unit and contract tests
 ├─ docker-compose.yml
 ├─ Dockerfile
 └─ docs/CASE_STUDY.md
@@ -318,17 +383,17 @@ If you want to upgrade dependencies, treat it as a **refresh cycle**:
 
 ## Security
 
-See: `SECURITY.md`
+See `SECURITY.md`.
 
 ---
 
 ## Case study
 
-See: `docs/CASE_STUDY.md`
+See `docs/CASE_STUDY.md`.
 
 ---
 
-## License & attribution
+## License and attribution
 
 - Code license: MIT — see `LICENSE`.
-- Dataset is not redistributed. If you download it, follow the dataset terms — see `DATA_LICENSE.md`.
+- Dataset files are not redistributed. If you download a dataset, follow its original terms — see `DATA_LICENSE.md`.
