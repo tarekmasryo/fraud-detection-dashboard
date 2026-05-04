@@ -201,6 +201,6 @@ The release includes protected API flows, configurable CORS, and explicit secret
 
 ## Why this architecture is intentionally compact
 
-The repo demonstrates platform engineering around ML decisions without shipping unnecessary public complexity. The release keeps multi-tenancy, billing, Kubernetes, a model-registry service, and full retraining orchestration outside scope so the implemented system remains runnable, focused, and technically inspectable.
+This repository implements platform engineering around ML decisions without shipping unnecessary public complexity. The release keeps multi-tenancy, billing, Kubernetes, a model-registry service, and full retraining orchestration outside scope so the implemented system remains runnable, focused, and technically inspectable.
 
 The intended signal is clear: **production-minded system boundaries around ML risk decisions**.
