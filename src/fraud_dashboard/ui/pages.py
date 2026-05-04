@@ -103,6 +103,7 @@ class RunState:
     cost_fp: float
     cost_fn: float
     model_key: str
+    policy_name: str | None
     elapsed_s: float
 
 
@@ -157,6 +158,7 @@ class PredictionEnginePage:
         src_msg: str,
         model_key: str,
         thr: float,
+        policy_name: str | None,
         cost_fp: float,
         cost_fn: float,
     ) -> None:
@@ -173,13 +175,21 @@ class PredictionEnginePage:
             return
 
         with st.spinner("Running inference..."):
-            probs, elapsed = self.predictor.predict_proba_batch(X, model_key=model_key)
+            probs, elapsed = self.predictor.predict_proba_batch(
+                X,
+                model_key=model_key,
+                threshold=thr if policy_name is None else None,
+                policy=policy_name,
+            )
 
         preds = (probs >= thr).astype(int)
         out = df_pred.copy()
         out["fraud_proba"] = probs
         out["fraud_pred"] = preds
         y_true = out["Class"].values if "Class" in out.columns else None
+
+        policy_label = policy_name or "manual_override"
+        st.caption(f"Operating point: {policy_label} · threshold={thr:.3f}")
 
         if y_true is not None:
             prec = precision_score(y_true, preds, zero_division=0)
@@ -202,6 +212,7 @@ class PredictionEnginePage:
             cost_fp=float(cost_fp),
             cost_fn=float(cost_fn),
             model_key=model_key,
+            policy_name=policy_name,
             elapsed_s=float(elapsed),
         )
 

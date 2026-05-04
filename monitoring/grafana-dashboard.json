@@ -1,0 +1,65 @@
+{
+  "title": "Fraud Risk Ops Platform",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "HTTP Request Rate by Status",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(rate(fraud_http_requests_total[5m])) by (status)"}]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "HTTP Latency p95",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(fraud_http_request_duration_seconds_bucket[5m])) by (le, path))"}]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Prediction Requests by Model and Source",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "sum(rate(fraud_prediction_requests_total[5m])) by (model, source)"}]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Prediction Latency p95",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(fraud_prediction_latency_seconds_bucket[5m])) by (le, model, source))"}]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Prediction Errors by Model",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+      "targets": [{"expr": "sum(rate(fraud_prediction_errors_total[5m])) by (model, error_type)"}]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "High-Risk Predictions",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+      "targets": [{"expr": "sum(rate(fraud_high_risk_predictions_total[5m])) by (model)"}]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Threshold Policy Usage",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+      "targets": [{"expr": "sum(rate(fraud_threshold_policy_usage_total[5m])) by (model, policy)"}]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Batch Jobs by Status",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "targets": [{"expr": "sum(rate(fraud_batch_jobs_total[5m])) by (status)"}]
+    }
+  ]
+}

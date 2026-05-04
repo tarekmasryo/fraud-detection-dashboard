@@ -5,16 +5,20 @@
   "RF_Thr_P90": 0.65,
   "XGB_Thr_MinCost": 0.22812701761722565,
   "XGB_Thr_P90": 0.75,
-  "artifact_version": "v2",
-  "default_model": "random_forest",
+  "artifact_version": "fraud-risk-ops-v0.1.0",
+  "default_model": "rf",
   "models": {
-    "random_forest": {
-      "f1_valid": 0.8817204301070282,
-      "threshold": 0.0534831589433206
+    "rf": {
+      "threshold": 0.0534831589433206,
+      "legacy_validation_f1_reference": 0.8817204301070282,
+      "metric_status": "reference_only_not_holdout_certified"
     },
-    "xgboost": {
-      "f1_valid": 0.8756756756751775,
-      "threshold": 0.22812701761722565
+    "xgb": {
+      "threshold": 0.22812701761722565,
+      "legacy_validation_f1_reference": 0.8756756756751775,
+      "metric_status": "reference_only_not_holdout_certified"
     }
-  }
+  },
+  "split_policy": "packaged_reference_artifacts",
+  "metrics_note": "Packaged metrics are reference-only. Regenerate artifacts with scripts/train.py for calibration-selected thresholds and holdout-test reporting."
 }

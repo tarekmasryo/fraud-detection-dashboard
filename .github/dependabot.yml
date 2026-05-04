@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # Serialized ML artifacts in artifacts/ are tied to this pinned runtime stack.
+      # Upgrade these only together with refreshed artifacts and full validation.
+      - dependency-name: "numpy"
+      - dependency-name: "scipy"
+      - dependency-name: "scikit-learn"
+      - dependency-name: "xgboost"
+      - dependency-name: "joblib"
+      - dependency-name: "pandas"
+      - dependency-name: "streamlit"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

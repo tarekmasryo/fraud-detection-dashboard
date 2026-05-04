@@ -71,7 +71,7 @@ artifacts/*
 !artifacts/*.joblib
 !artifacts/*.json
 
-# If you keep small demo assets, add explicit allowlist rules above.
+# If you keep small sample assets, add explicit allowlist rules above.
 
 # =========================
 # Docker / Compose local overrides
@@ -89,3 +89,9 @@ tmp/
 
 # Generated specs
 openapi.json
+
+# Local runtime stores
+*.db
+*.sqlite
+*.sqlite3
+data/fraud_ops.db

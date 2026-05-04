@@ -34,20 +34,39 @@ def _pick_default_model(available: list[str]) -> str:
     return available[0] if available else "rf"
 
 
+def _policy_threshold(thresholds: dict, policy_name: str, model_key: str, fallback: float) -> float:
+    policies = thresholds.get("policies") or {}
+    cfg = policies.get(policy_name) or {}
+    values = cfg.get("thresholds") or {}
+    try:
+        return float(values.get(model_key, fallback))
+    except Exception:
+        return float(fallback)
+
+
 def _threshold_defaults(thresholds: dict, model_key: str) -> tuple[float, float]:
     if model_key == "rf":
-        return float(thresholds.get("RF_Thr_P90", 0.65)), float(
-            thresholds.get("RF_Thr_MinCost", 0.07)
+        balanced = _policy_threshold(
+            thresholds, "balanced", "rf", float(thresholds.get("RF_Thr_P90", 0.65))
         )
-    return float(thresholds.get("XGB_Thr_P90", 0.75)), float(
-        thresholds.get("XGB_Thr_MinCost", 0.17)
+        min_cost = _policy_threshold(
+            thresholds, "min_cost", "rf", float(thresholds.get("RF_Thr_MinCost", 0.07))
+        )
+        return balanced, min_cost
+    balanced = _policy_threshold(
+        thresholds, "balanced", "xgb", float(thresholds.get("XGB_Thr_P90", 0.75))
     )
+    min_cost = _policy_threshold(
+        thresholds, "min_cost", "xgb", float(thresholds.get("XGB_Thr_MinCost", 0.17))
+    )
+    return balanced, min_cost
 
 
 @dataclass
 class SidebarConfig:
     model_key: str
     thr: float
+    policy_name: str | None
     cost_fp: float
     cost_fn: float
     target_precision: float
@@ -60,7 +79,7 @@ class SidebarConfig:
 class DashboardApp:
     def __init__(self) -> None:
         st.set_page_config(
-            page_title="Fraud Detection Dashboard",
+            page_title="Fraud Risk Ops Console",
             layout="wide",
             page_icon="🧠",
             initial_sidebar_state="expanded",
@@ -72,8 +91,8 @@ class DashboardApp:
         st.markdown(
             """
 <div class="brand-title">
-  <h2>🛡️ Fraud Detection Dashboard</h2>
-  <div class="brand-sub">Decision-ready scoring · Threshold tuning · Cost-aware evaluation</div>
+  <h2>🛡️ Fraud Risk Ops Console</h2>
+  <div class="brand-sub">Risk decisions · Policy thresholds · Review workflow · Audit signals</div>
 </div>
 """,
             unsafe_allow_html=True,
@@ -111,21 +130,38 @@ class DashboardApp:
             step=5.0,
         )
 
-        thr = st.sidebar.slider("Decision threshold", 0.0, 1.0, float(thr_p90_default), 0.001)
+        policies = thresholds.get("policies") or {}
+        policy_options = [p for p in ["strict", "balanced", "min_cost", "lenient"] if p in policies]
+        if not policy_options:
+            policy_options = ["balanced"]
 
-        st.sidebar.markdown("**Presets**")
-        preset = st.sidebar.radio(
-            "Select preset",
-            ["Strict", "Balanced", "Lenient"],
+        st.sidebar.markdown("**Operating policy**")
+        threshold_mode = st.sidebar.radio(
+            "Threshold mode",
+            ["Policy preset", "Manual threshold"],
             horizontal=True,
-            label_visibility="collapsed",
         )
-        if preset == "Strict":
-            thr = 0.90
-        elif preset == "Balanced":
-            thr = float(thr_p90_default)
+        policy_name: str | None = None
+        if threshold_mode == "Policy preset":
+            default_policy_idx = (
+                policy_options.index("balanced") if "balanced" in policy_options else 0
+            )
+            policy_name = st.sidebar.selectbox(
+                "Policy preset",
+                policy_options,
+                index=default_policy_idx,
+                format_func=lambda value: value.replace("_", " ").title(),
+            )
+            thr = _policy_threshold(thresholds, policy_name, model_key, float(thr_p90_default))
+            st.sidebar.caption(f"Resolved threshold: {thr:.3f}")
         else:
-            thr = 0.20
+            thr = st.sidebar.slider(
+                "Manual decision threshold",
+                0.0,
+                1.0,
+                float(thr_p90_default),
+                0.001,
+            )
 
         st.sidebar.markdown("---")
         st.sidebar.markdown("**Threshold Finder**")
@@ -138,6 +174,7 @@ class DashboardApp:
         return SidebarConfig(
             model_key=model_key,
             thr=float(thr),
+            policy_name=policy_name,
             cost_fp=float(cost_fp),
             cost_fn=float(cost_fn),
             target_precision=float(target_precision),
@@ -150,7 +187,6 @@ class DashboardApp:
     def run(self) -> None:
         self._render_header()
 
-        # backend_meta is currently informational only; keep it for future UI panels.
         predictor, _backend_meta = ui_backend_selector()
         features = predictor.schema_features()
         if not features:
@@ -186,6 +222,7 @@ class DashboardApp:
                 src_msg=msg_pred,
                 model_key=cfg.model_key,
                 thr=cfg.thr,
+                policy_name=cfg.policy_name,
                 cost_fp=cfg.cost_fp,
                 cost_fn=cfg.cost_fn,
             )
@@ -225,7 +262,7 @@ class DashboardApp:
             DataQualitySegmentsPage().render(df=df_prof, src_msg=prof_msg, thr=cfg.thr)
 
         st.markdown("---")
-        st.caption("Fraud Detection · Calibrated RF/XGB · © Tarek Masryo")
+        st.caption("Fraud Risk Ops · Calibrated RF/XGB · © Tarek Masryo")
 
 
 def main() -> None:

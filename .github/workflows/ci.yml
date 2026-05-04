@@ -6,13 +6,16 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
   python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -34,7 +37,7 @@ jobs:
 
       - name: Pytest (coverage gate)
         run: |
-          python -m pytest -q --cov=src --cov-fail-under=60
+          python -m pytest -q --cov=src --cov-fail-under=75
 
       - name: Security (pip-audit)
         continue-on-error: true
@@ -44,8 +47,23 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build test stage
         run: |
-          docker build --target test -t fraud-dashboard:test .
+          docker build --target test -t fraud-risk-ops:test .
+
+      - name: Docker Compose smoke test
+        run: |
+          docker compose up -d --build
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/live; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/ready
+          curl -fsS http://127.0.0.1:8000/metrics | head -n 5
+
+      - name: Stop Docker Compose
+        if: always()
+        run: |
+          docker compose down -v

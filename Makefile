@@ -1,74 +1,49 @@
-# Makefile (Windows / cmd.exe) — one-button workflow
-# Usage: make all
+.PHONY: help install format lint test test-cov api ui docker-up docker-down clean
 
-SHELL := cmd.exe
-.SHELLFLAGS := /C
-
-PY := .venv\Scripts\python.exe
-
-.PHONY: help venv deps install format lint test api ui all clean
+PY ?= python
 
 help:
-	@echo Targets:
-	@echo   make venv     - create .venv
-	@echo   make deps     - install requirements
-	@echo   make install  - pip install -e .
-	@echo   make format   - ruff format --check
-	@echo   make lint     - ruff check
-	@echo   make test     - pytest
-	@echo   make api      - run FastAPI (uvicorn)
-	@echo   make ui       - run Streamlit UI
-	@echo   make all      - deps+checks then launch api+ui
-	@echo   make clean    - remove .venv/.pytest_cache/__pycache__
+	@echo "Targets:"
+	@echo "  make install    Install runtime and dev dependencies"
+	@echo "  make format     Check formatting with Ruff"
+	@echo "  make lint       Run Ruff lint checks"
+	@echo "  make test       Run unit tests"
+	@echo "  make test-cov   Run tests with coverage gate"
+	@echo "  make api        Run FastAPI locally"
+	@echo "  make ui         Run Streamlit locally"
+	@echo "  make docker-up  Start Docker Compose stack"
+	@echo "  make docker-down Stop Docker Compose stack"
+	@echo "  make clean      Remove local test/cache files"
 
-venv:
-	@if exist ".venv" (echo .venv already exists) else (py -3.11 -m venv .venv)
+install:
+	$(PY) -m pip install -U pip setuptools wheel
+	$(PY) -m pip install -r requirements.txt -r requirements-dev.txt
+	$(PY) -m pip install -e .
 
-deps: venv
-	@"$(PY)" -m pip install -U pip setuptools wheel
-	@"$(PY)" -m pip install -r requirements.txt -r requirements-dev.txt
+format:
+	$(PY) -m ruff format --check .
 
-install: deps
-	@"$(PY)" -m pip install -e .
+lint:
+	$(PY) -m ruff check .
 
-format: install
-	@"$(PY)" -m ruff format --check .
+test:
+	$(PY) -m pytest -q
 
-lint: install
-	@"$(PY)" -m ruff check .
+test-cov:
+	$(PY) -m pytest -q --cov=src --cov-fail-under=75
 
-test: install
-	@"$(PY)" -m pytest -q
+api:
+	$(PY) -m uvicorn fraud_dashboard.api.main:app --reload --reload-dir src --host 127.0.0.1 --port 8000
 
-api: install
-	@"$(PY)" -m uvicorn fraud_dashboard.api.main:app --reload --reload-dir src --host 127.0.0.1 --port 8000
+ui:
+	$(PY) -m streamlit run app.py
 
-ui: install
-	@"$(PY)" -m streamlit run streamlit_app.py
+docker-up:
+	docker compose up --build
 
-all: format lint test
-	@echo Launching API + UI in separate terminals...
-	@start "API" cmd /k ""$(PY)" -m uvicorn fraud_dashboard.api.main:app --reload --reload-dir src --host 127.0.0.1 --port 8000"
-	@start "UI"  cmd /k ""$(PY)" -m streamlit run streamlit_app.py"
-	@echo API Docs: http://127.0.0.1:8000/docs
-	@echo UI      : http://localhost:8501
+docker-down:
+	docker compose down -v
 
 clean:
-	@if exist ".venv" rmdir /s /q ".venv"
-	@if exist ".pytest_cache" rmdir /s /q ".pytest_cache"
-	@for /d /r %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-
-
-.PHONY: rebuild-venv fresh doctor
-
-doctor:
-	@echo PYVENV:
-	@if exist ".venv\pyvenv.cfg" type ".venv\pyvenv.cfg" else echo (no venv yet)
-	@echo PYEXE:
-	@if exist ".venv\Scripts\python.exe" (".venv\Scripts\python.exe" -c "import sys; print(sys.executable)") else echo (missing .venv\Scripts\python.exe)
-
-rebuild-venv:
-	@if exist ".venv" rmdir /s /q ".venv"
-	@py -3.11 -m venv .venv
-
-fresh: rebuild-venv all
+	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage htmlcov coverage.xml
+	find . -type d -name __pycache__ -prune -exec rm -rf {} +

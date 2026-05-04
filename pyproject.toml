@@ -9,9 +9,9 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [project]
-name = "fraud-detection-dashboard"
-version = "1.0.0"
-description = "Decision-first fraud detection dashboard with artifact loading, validation, and Docker."
+name = "fraud-risk-ops-platform"
+version = "0.1.0"
+description = "Production-structured fraud risk operations platform with FastAPI scoring, policy governance, audit logging, worker-backed batch jobs, monitoring, and Docker."
 requires-python = ">=3.11,<3.12"
 readme = "README.md"
 license = {text = "MIT"}
@@ -24,12 +24,3 @@ extend-exclude = ["artifacts", "data"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
-
-[tool.pytest.ini_options]
-addopts = "-q"
-testpaths = ["tests"]
-pythonpath = ["src"]
-filterwarnings = [
-  "ignore:.*If you are loading a serialized model.*:UserWarning",
-  "ignore:.*InconsistentVersionWarning.*:UserWarning",
-]

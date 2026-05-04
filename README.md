@@ -1,181 +1,138 @@
-# Fraud Detection Dashboard — Decision-Ready UI + FastAPI Inference
+# 🛡️ Fraud Risk Ops Platform
 
-[![CI](https://github.com/tarekmasryo/fraud-detection-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/tarekmasryo/fraud-detection-dashboard/actions/workflows/ci.yml)
+[![CI](https://github.com/tarekmasryo/fraud-risk-ops-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/tarekmasryo/fraud-risk-ops-platform/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-inference-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-risk%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-review%20console-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![Version](https://img.shields.io/badge/version-v0.1.0-blue)](./VERSION)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A **decision-ready fraud screening dashboard** with a clean split between **model inference** and **operator-facing analytics**.
+**Production-structured fraud risk operations platform** for fraud scoring, policy-driven decisions, review workflows, audit logging, worker-backed batch jobs, and monitoring-ready signals.
 
-The project combines:
+The system models the operational boundary around an ML risk decision:
 
-- **FastAPI** inference endpoints for single-record and batch scoring
-- **Streamlit** dashboard for exploration, scoring, thresholds, metrics, and segment review
-- **Pre-trained RandomForest and XGBoost artifacts** with a reusable threshold policy
-- **Docker Compose** setup for a reproducible API + UI runtime
-
-> The app runs out of the box with synthetic demo data. For real analysis, upload a compatible labeled CSV or place the expected dataset locally.
+```text
+transaction record -> schema validation -> model score -> policy decision -> audit log -> review console -> metrics
+```
 
 ---
 
-## What this repo demonstrates
+## 🎯 Why this project matters
 
-### FastAPI inference service
+Fraud scoring is not only a model problem. A useful operational system needs stable contracts, policy review, auditability, batch processing, and visibility into runtime behavior.
 
-- Schema-driven request validation
-- Single-record and batch prediction endpoints
-- Model selection with `rf` / `xgb`
-- Configurable decision threshold
-- Low-latency JSON responses with measured `latency_ms`
-- Metadata endpoint exposing feature schema and model policy
+This project demonstrates those production-minded boundaries around an ML decision system:
 
-### Streamlit analytics dashboard
-
-- CSV upload and local dataset auto-loading
-- Synthetic fallback dataset with the expected schema
-- Batch scoring workflow
-- Threshold presets and custom threshold control
-- Metrics, diagnostic plots, and segmented review views
-- Data quality checks before prediction
+- explicit API contracts
+- model/policy separation
+- strict input validation
+- fail-closed artifact readiness
+- persisted audit trails
+- worker-backed batch-job lifecycle
+- Prometheus/Grafana observability hooks
+- documented engineering trade-offs
 
 ---
 
-## Decision policy presets
+## ✨ What this repo demonstrates
 
-Policy presets provide practical defaults for the operating threshold.
-
-| Preset | Intent | Typical effect |
-|---|---|---|
-| **Strict** | Reduce false positives | Higher threshold → fewer flagged transactions, more missed fraud risk |
-| **Balanced** | Default operating trade-off | Mid threshold → balanced precision/recall behavior |
-| **Lenient** | Increase fraud capture | Lower threshold → more flagged transactions, more review load |
-
-You can override the threshold manually from the UI or API request.
-
----
-
-## Dashboard preview
-
-### Data overview
-
-![Data overview](assets/data_overview.png)
-
-### Prediction engine
-
-![Prediction engine](assets/prediction_engine.png)
-
-### Model metrics
-
-![Model metrics](assets/model_metrics.png)
-
-### Model insights
-
-![Model insights](assets/model_insights.png)
-
-### Data quality and segments
-
-![Data quality and segments](assets/data_quality.png)
+| Layer | Implementation |
+|---|---|
+| **Risk API** | FastAPI `/v1` endpoints for prediction, policy, jobs, audit logs, and model metadata. |
+| **Review Console** | Streamlit UI for scoring, threshold review, model views, data quality checks, and operational slices. API mode chunks large batches automatically to respect backend limits. |
+| **Policy Governance** | `artifacts/policy.json` is the threshold source of truth for API and UI; UI policy/manual threshold selections are forwarded to the API in API mode. |
+| **Decision Contract** | Responses include `risk_score`, `decision`, `review_required`, `risk_band`, `reason_codes`, `policy_version`, and `input_hash`. |
+| **Readiness Gate** | `/ready` validates metadata, schema, policy, model files, runtime compatibility, checksums, and sample scoring. |
+| **Persistence** | SQLite operations store for prediction requests, row-level predictions, audit logs, and batch jobs. |
+| **Batch Work** | Docker Compose runs API + worker; SQLite is source of truth and Redis is a wake-up queue. |
+| **Observability** | `/metrics`, `/v1/metrics/summary`, Prometheus config, and provisioned Grafana dashboard. |
+| **Quality Gates** | Ruff, Pytest, coverage config, Docker test stage, `.dockerignore`, `.gitignore`, and CI workflow. |
 
 ---
 
-## Architecture
+## 🧭 Architecture
 
 ```mermaid
 flowchart LR
-  DATA["CSV upload / local dataset / synthetic demo"] --> UI["Streamlit UI"]
-  UI -->|"httpx: /metadata /predict /predict/batch"| API["FastAPI Inference API"]
-  API -->|"load once at startup"| ART["artifacts/ models + metadata + thresholds"]
+  Client["API Client"] --> API["FastAPI Risk API"]
+  UI["Streamlit Review Console"] --> API
+  API --> Auth["Auth Guard"]
+  API --> Validator["Schema Validator"]
+  Validator --> Engine["Risk Decision Engine"]
+  Engine --> Models["Model Artifacts"]
+  Engine --> Policy["Policy Service"]
+  Policy --> PolicyFile["artifacts/policy.json"]
+  Engine --> Store[("SQLite Ops Store")]
+  Store --> Audit["Audit Trail"]
+  API --> Queue["Redis Wake-up Queue"]
+  Queue --> Worker["Batch Worker"]
+  Worker --> Store
+  API --> Metrics["Prometheus Metrics"]
+  Metrics --> Grafana["Grafana Dashboard"]
 ```
 
-Key modules:
+Core package map:
 
-- `src/fraud_dashboard/api/` — FastAPI app, artifact loading, validation, and response contracts
-- `src/fraud_dashboard/ui/` — Streamlit dashboard and API client workflow
-- `src/fraud_dashboard/data/` — schema helpers and synthetic demo data generator
-- `artifacts/` — serialized models, feature metadata, and threshold policy
-- `tests/` — API, artifact-loading, and contract checks
+```text
+src/fraud_dashboard/
+├─ api/                 # FastAPI app and versioned API surface
+├─ core/                # config, policy, decision logic, artifacts, security, readiness
+├─ data/                # synthetic data and validation helpers
+├─ observability/       # Prometheus metrics
+├─ platform/            # SQLite store, jobs, audit persistence, Redis wake-up queue
+├─ services/            # application services for scoring, jobs, reference data, and summaries
+├─ ui/                  # Streamlit review console
+└─ workers/             # batch worker entrypoint
+```
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/ENGINEERING.md`](docs/ENGINEERING.md).
 
 ---
 
-## Prerequisites
+## 🖼️ Screenshots
 
-- **Python 3.11**
-- **Docker Desktop** if you use the Docker Compose quickstart
+| Data Overview | Prediction Engine | Model Metrics |
+|---|---|---|
+| ![](assets/data_overview.png) | ![](assets/prediction_engine.png) | ![](assets/model_metrics.png) |
 
-> **Runtime note:** This project ships pre-trained `joblib` artifacts built for the Python 3.11 ML stack. If you upgrade Python or core ML dependencies, re-export the artifacts and update `artifacts/metadata.json`.
+| Model Insights | Data Quality |
+|---|---|
+| ![](assets/model_insights.png) | ![](assets/data_quality.png) |
 
 ---
 
-## Quickstart with Docker Compose
-
-This is the most reproducible way to run both services.
+## 🚀 Quickstart with Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-Run in the background:
+Open:
 
-```bash
-docker compose up -d --build
-```
+| Service | URL |
+|---|---|
+| API docs | `http://127.0.0.1:8000/docs` |
+| Review console | `http://127.0.0.1:8501` |
+| Prometheus | `http://127.0.0.1:9090` |
+| Grafana | `http://127.0.0.1:3000` |
 
-View logs:
-
-```bash
-docker compose logs -f
-```
-
-Stop the services:
+Stop:
 
 ```bash
 docker compose down
 ```
 
-Open:
-
-- API: `http://127.0.0.1:8000`
-- API docs: `http://127.0.0.1:8000/docs`
-- UI: `http://127.0.0.1:8501`
-
-The UI container calls the API at `http://api:8000` through Docker Compose service DNS.
-
-### Port already allocated
-
-If port `8501` is already in use:
-
-- stop the process or container using the port, or
-- change the host mapping in `docker-compose.yml`, for example:
-
-```yaml
-ports:
-  - "8502:8501"
-```
-
-Then re-run:
+Remove local Docker volumes when you want a clean runtime store:
 
 ```bash
-docker compose up --build
+docker compose down -v
 ```
 
 ---
 
-## Quickstart locally
+## 🧪 Quickstart locally
 
-### 1. Create a virtual environment and install dependencies
-
-#### Windows PowerShell
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -U pip setuptools wheel
-pip install -r requirements.txt -r requirements-dev.txt
-pip install -e .
-```
-
-#### Linux / macOS
+> The official runtime target is Python 3.11. The shipped artifacts are checked against the pinned runtime in `requirements.txt`.
 
 ```bash
 python3.11 -m venv .venv
@@ -185,56 +142,171 @@ pip install -r requirements.txt -r requirements-dev.txt
 pip install -e .
 ```
 
-### 2. Run the API
-
-Recommended repo entrypoint:
+Run API:
 
 ```bash
 python api.py
 ```
 
-Standard Uvicorn entrypoint:
-
-```bash
-uvicorn fraud_dashboard.api.main:app --host 127.0.0.1 --port 8000
-```
-
-Open:
-
-- API docs: `http://127.0.0.1:8000/docs`
-- Health: `http://127.0.0.1:8000/health`
-- Metadata: `http://127.0.0.1:8000/metadata`
-
-### 3. Run the Streamlit UI
+Run UI:
 
 ```bash
 python -m streamlit run app.py
 ```
 
-Open:
+Run quality checks:
 
-- UI: `http://127.0.0.1:8501`
-
-> On Windows, `python -m streamlit ...` is preferred because it uses the Streamlit package installed inside the active virtual environment.
+```bash
+ruff format --check .
+ruff check .
+pytest -q --cov=src --cov-fail-under=75
+```
 
 ---
 
-## Streamlit Community Cloud
+## 🔌 API surface
+
+Runtime checks:
+
+```text
+GET /live
+GET /ready
+GET /metadata
+GET /metrics
+```
+
+Versioned platform API:
+
+```text
+POST /v1/auth/login
+GET  /v1/me
+POST /v1/predictions
+POST /v1/predictions/batch
+POST /v1/batch-jobs
+GET  /v1/jobs/{job_id}
+GET  /v1/audit-logs
+GET  /v1/policies
+GET  /v1/metrics/summary
+GET  /v1/model-versions
+```
+
+Example response shape:
+
+```json
+{
+  "model": "rf",
+  "threshold": 0.0534831589433206,
+  "proba_fraud": 0.0123,
+  "risk_score": 0.0123,
+  "label": 0,
+  "decision": "approve",
+  "review_required": false,
+  "risk_band": "low",
+  "reason_codes": ["score_below_policy_threshold", "risk_band_low"],
+  "policy": "min_cost",
+  "policy_version": "fraud-risk-ops-v0.1.0",
+  "input_hash": "...",
+  "latency_ms": 12,
+  "request_id": "pred_..."
+}
+```
+
+See [`docs/API.md`](docs/API.md).
+
+---
+
+## 🧩 Policy governance
+
+`artifacts/policy.json` is the source of truth for operating thresholds. The API and UI read the same policy file to avoid backend/UI drift. In API mode, the Streamlit console forwards the selected policy preset or manual threshold to the API, then chunks large scoring runs according to the backend `MAX_BATCH_RECORDS` limit.
+
+Current operating policies:
+
+| Policy | Intent |
+|---|---|
+| `strict` | Reduce false positives and analyst load. |
+| `balanced` | Default review-oriented operating point. |
+| `min_cost` | Cost-aware packaged reference operating point; regenerate artifacts for target-data holdout metrics. |
+| `lenient` | Increase fraud capture with higher review load. |
+
+Explicit invalid policy requests fail with `400` instead of silently falling back to another threshold. That behavior is deliberate: policy selection is part of the decision contract.
+
+---
+
+## ✅ Artifact readiness
 
 Use:
 
-- Entry point: `streamlit_app.py`
-- Python version: `3.11`
+```text
+GET /ready
+```
 
-Select Python 3.11 from the deployment settings before launching the app.
+The readiness check validates:
 
-For the most reproducible local or portfolio demo, Docker Compose is recommended.
+- metadata presence
+- schema feature contract
+- policy file presence
+- model artifact presence
+- artifact checksums against the expected SHA-256 manifest in `metadata.json`
+- runtime compatibility against metadata
+- sample scoring without compatibility fallback
+
+By default, readiness **fails closed** on runtime mismatch. The API does not silently replace a broken serialized model with heuristic scores.
 
 ---
 
-## Data
+## ⚙️ Configuration
 
-The UI supports uploaded CSV files with the expected feature schema.
+Copy `.env.example` and adjust values as needed.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `DATABASE_URL` | Local operations persistence store | `sqlite:///./data/fraud_ops.db` |
+| `MAX_BATCH_RECORDS` | Batch scoring safety limit | `1000` |
+| `RUN_JOBS_IN_API` | Run jobs inside API process for one-process local runs | `true` |
+| `WORKER_POLL_SECONDS` | Worker poll interval when Redis wake-up is unavailable | `2` |
+| `APP_ENV` | Runtime environment guard; `prod` requires auth | `dev` |
+| `REQUIRE_AUTH` | Protect scoring and operational endpoints | `false` |
+| `CORS_ALLOW_ORIGINS` | Comma-separated browser origins allowed for API clients | local Streamlit origins |
+| `DEMO_API_KEY` / `DEMO_API_KEY_HASH` | Backend API key or HMAC digest when auth is enabled | replace before protected runs |
+| `FRAUD_API_KEY` / `FRAUD_BEARER_TOKEN` | Optional Streamlit-to-API auth forwarding | empty |
+| `STRICT_ARTIFACT_RUNTIME` | Fail `/ready` when artifacts/runtime mismatch | `true` |
+| `ALLOW_ARTIFACT_COMPATIBILITY_FALLBACK` | Opt-in local UI compatibility fallback only | `false` |
+| `ALLOW_LOCAL_FALLBACK` | Allow UI to use local artifacts if API is down | `true` |
+| `PROMETHEUS_ENABLED` | Expose Prometheus metrics endpoint | `true` |
+
+For protected local runs, set strong non-default values:
+
+```bash
+REQUIRE_AUTH=true
+JWT_SECRET_KEY=<strong-secret>
+API_KEY_HASH_SECRET=<strong-hmac-secret>
+DEMO_API_KEY=<strong-api-key>
+# optional: DEMO_API_KEY_HASH=<hmac-sha256-api-key-digest>
+ADMIN_PASSWORD=<strong-password>
+# optional for Streamlit-to-API protected mode:
+FRAUD_API_KEY=<same-strong-api-key>
+GRAFANA_ADMIN_PASSWORD=<strong-local-grafana-password>
+```
+
+The app refuses insecure local secrets when `REQUIRE_AUTH=true`. It also refuses `APP_ENV=prod` unless auth is enabled, and rejects wildcard CORS in prod-like environments. Scoring, operational endpoints, and `/metadata` require authentication in protected mode. The Streamlit console can also forward protected-mode credentials through `FRAUD_API_KEY`, `FRAUD_BEARER_TOKEN`, or the sidebar auth fields.
+
+---
+
+## 🧠 Training and metric boundary
+
+The packaged artifacts are reference artifacts for running and reviewing the platform. They are not presented as operational benchmark claims. To regenerate deployable model artifacts, run `scripts/train.py`; the script now uses separate splits for model training, calibration/threshold selection, and final holdout-test metric reporting.
+
+```bash
+python scripts/train.py --data data/creditcard.csv --out artifacts --label Class
+```
+
+The resulting `metadata.json` records the split contract and stores expected SHA-256 checksums for readiness validation.
+
+---
+
+## 📦 Data
+
+This repository does not redistribute the original credit-card fraud dataset. The UI can run with synthetic data and accepts compatible uploaded CSV files.
 
 Auto-load order:
 
@@ -243,157 +315,46 @@ Auto-load order:
 3. `data/demo_creditcard.csv`
 4. `/mnt/data/creditcard.csv`
 
-If no compatible dataset is found, the app generates a synthetic demo dataset so the dashboard remains runnable.
-
-Dataset files are **not redistributed** in this repository. See `DATA_LICENSE.md` for attribution and terms.
-
-### Optional Kaggle CLI download
-
-```bash
-pip install kaggle
-kaggle datasets download -d mlg-ulb/creditcardfraud -p data --unzip
-```
+See [`DATA_LICENSE.md`](DATA_LICENSE.md).
 
 ---
 
-## Configuration
+## 📚 Documentation
 
-Environment variables:
-
-| Variable | Purpose | Example |
-|---|---|---|
-| `FRAUD_API_URL` | Preferred FastAPI base URL for the Streamlit UI | `http://127.0.0.1:8000` |
-| `API_BASE_URL` | Backward-compatible API URL variable | `http://api:8000` |
-
-See `.env.example`.
-
----
-
-## API usage
-
-### Endpoints
-
-- `GET /health`
-- `GET /metadata`
-- `POST /predict`
-- `POST /predict/batch`
-
-### Python request example
-
-```python
-import httpx
-
-api_url = "http://127.0.0.1:8000"
-
-metadata = httpx.get(f"{api_url}/metadata").json()
-features = metadata["schema"]["features"]
-
-record = {feature: 0.0 for feature in features}
-
-response = httpx.post(
-    f"{api_url}/predict",
-    json={
-        "record": record,
-        "model": "rf",
-    },
-)
-
-print(response.json())
-```
-
-### PowerShell request example
-
-```powershell
-./scripts/predict.ps1 -ApiUrl "http://127.0.0.1:8000" -Model rf
-```
-
-Model and threshold can be passed in the request body or as query parameters. If both are provided, query parameters take precedence.
-
-### Example response
-
-```json
-{
-  "model": "rf",
-  "threshold": 0.05348,
-  "proba_fraud": 0.00033,
-  "label": 0,
-  "latency_ms": 49
-}
-```
+| Doc | Purpose |
+|---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System boundaries, runtime flows, governance, and deployment topology. |
+| [`docs/ENGINEERING.md`](docs/ENGINEERING.md) | Clean-code boundaries, design patterns, and why the repo stays compact. |
+| [`docs/API.md`](docs/API.md) | Endpoint reference and request/response contract. |
+| [`docs/OPERATIONS.md`](docs/OPERATIONS.md) | Local operations, runtime checks, worker mode, and monitoring. |
+| [`docs/JOB_LIFECYCLE.md`](docs/JOB_LIFECYCLE.md) | Persisted async batch-job lifecycle. |
+| [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md) | SQLite operational tables. |
+| [`docs/TRADEOFFS.md`](docs/TRADEOFFS.md) | Engineering trade-offs behind persistence, queueing, auth, artifacts, and Docker. |
+| [`docs/SCOPE.md`](docs/SCOPE.md) | Release scope and operational boundaries. |
+| [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | Short system-design framing. |
+| [`SECURITY.md`](SECURITY.md) | Security policy and protected-mode boundary. |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release notes. |
 
 ---
 
-## Testing and quality gates
+## 📌 Release scope
 
-```bash
-ruff check .
-ruff format --check .
-pytest -q
-```
+This release focuses on the engineering system around fraud-risk decisions:
 
-Optional dependency audit:
+- model serving through stable API contracts
+- threshold policy governance
+- auditable prediction and batch-job records
+- seeded model-version and threshold-policy reference tables
+- review-oriented Streamlit interface
+- worker-backed batch processing
+- Prometheus/Grafana observability
+- Docker Compose deployment for local technical review
 
-```bash
-pip-audit
-```
-
-CI runs Ruff, Pytest, and the Docker build stage defined in `.github/workflows/ci.yml`.
-
----
-
-## Runtime compatibility
-
-The repository includes pre-trained serialized artifacts:
-
-```text
-artifacts/*.joblib
-artifacts/metadata.json
-artifacts/thresholds.json
-```
-
-The runtime is pinned to the Python 3.11 ML stack used for the exported artifacts.
-
-If you upgrade Python or core ML dependencies, treat it as an artifact refresh cycle:
-
-1. Upgrade dependencies.
-2. Re-export artifacts with `scripts/train.py`.
-3. Update `artifacts/metadata.json`.
-4. Re-run the test suite.
-5. Rebuild the Docker image.
+The repository uses synthetic/local runtime defaults and does not ship real customer data, payment-network integrations, tenant isolation, billing, or regulatory-compliance workflows. Those boundaries keep the release focused, runnable, and technically inspectable.
 
 ---
 
-## Project structure
+## 📄 License and attribution
 
-```text
-.
-├─ api.py                     # FastAPI entrypoint for local runs
-├─ app.py                     # Local Streamlit entrypoint
-├─ streamlit_app.py           # Streamlit Community Cloud entrypoint
-├─ src/                       # Package source code
-├─ artifacts/                 # Pre-trained models and threshold policy
-├─ scripts/                   # Utility scripts and training/export helpers
-├─ tests/                     # Unit and contract tests
-├─ docker-compose.yml
-├─ Dockerfile
-└─ docs/CASE_STUDY.md
-```
-
----
-
-## Security
-
-See `SECURITY.md`.
-
----
-
-## Case study
-
-See `docs/CASE_STUDY.md`.
-
----
-
-## License and attribution
-
-- Code license: MIT — see `LICENSE`.
-- Dataset files are not redistributed. If you download a dataset, follow its original terms — see `DATA_LICENSE.md`.
+- Code license: MIT — see [`LICENSE`](LICENSE).
+- Dataset files are not redistributed. Follow original dataset terms when using external data.

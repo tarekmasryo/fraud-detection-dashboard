@@ -12,6 +12,8 @@ import httpx
 class ApiConfig:
     base_url: str
     timeout_s: float = 10.0
+    api_key: str | None = None
+    bearer_token: str | None = None
 
 
 class ApiError(RuntimeError):
@@ -19,20 +21,37 @@ class ApiError(RuntimeError):
 
 
 def get_api_config() -> ApiConfig:
-    """Resolve the FastAPI base URL from env vars.
+    """Resolve the FastAPI base URL and optional auth from environment variables.
 
-    - Preferred: FRAUD_API_URL
-    - Back-compat: API_BASE_URL
+    - Preferred URL: FRAUD_API_URL
+    - Back-compat URL: API_BASE_URL
+    - Optional protected-mode API key: FRAUD_API_KEY
+    - Optional protected-mode bearer token: FRAUD_BEARER_TOKEN
     """
 
     base_url = (
         os.getenv("FRAUD_API_URL") or os.getenv("API_BASE_URL") or "http://127.0.0.1:8000"
     ).rstrip("/")
-    return ApiConfig(base_url=base_url)
+    return ApiConfig(
+        base_url=base_url,
+        api_key=os.getenv("FRAUD_API_KEY") or None,
+        bearer_token=os.getenv("FRAUD_BEARER_TOKEN") or None,
+    )
+
+
+def _auth_headers(cfg: ApiConfig) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    if cfg.api_key:
+        headers["X-API-Key"] = cfg.api_key
+    if cfg.bearer_token:
+        token = cfg.bearer_token.removeprefix("Bearer ").strip()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 def _client(cfg: ApiConfig) -> httpx.Client:
-    return httpx.Client(base_url=cfg.base_url, timeout=cfg.timeout_s)
+    return httpx.Client(base_url=cfg.base_url, timeout=cfg.timeout_s, headers=_auth_headers(cfg))
 
 
 def _request_json(
@@ -77,15 +96,37 @@ def fetch_metadata(cfg: ApiConfig) -> dict[str, Any]:
     return _request_json("GET", "/metadata", cfg=cfg)
 
 
-def predict_one(*, cfg: ApiConfig, model: str, record: dict[str, float]) -> dict[str, Any]:
-    """POST /predict"""
+def predict_one(
+    *,
+    cfg: ApiConfig,
+    model: str,
+    record: dict[str, float],
+    threshold: float | None = None,
+    policy: str | None = None,
+) -> dict[str, Any]:
+    """POST /v1/predictions."""
 
-    payload = {"model": model, "record": record}
-    return _request_json("POST", "/predict", cfg=cfg, payload=payload)
+    payload: dict[str, Any] = {"model": model, "record": record}
+    if policy is not None:
+        payload["policy"] = policy
+    if threshold is not None:
+        payload["threshold"] = float(threshold)
+    return _request_json("POST", "/v1/predictions", cfg=cfg, payload=payload)
 
 
-def predict_batch(*, cfg: ApiConfig, model: str, records: list[dict[str, float]]) -> dict[str, Any]:
-    """POST /predict/batch"""
+def predict_batch(
+    *,
+    cfg: ApiConfig,
+    model: str,
+    records: list[dict[str, float]],
+    threshold: float | None = None,
+    policy: str | None = None,
+) -> dict[str, Any]:
+    """POST /v1/predictions/batch."""
 
-    payload = {"model": model, "records": records}
-    return _request_json("POST", "/predict/batch", cfg=cfg, payload=payload)
+    payload: dict[str, Any] = {"model": model, "records": records}
+    if policy is not None:
+        payload["policy"] = policy
+    if threshold is not None:
+        payload["threshold"] = float(threshold)
+    return _request_json("POST", "/v1/predictions/batch", cfg=cfg, payload=payload)

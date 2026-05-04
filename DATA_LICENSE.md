@@ -2,7 +2,7 @@
 
 This repository **does not ship** the third-party credit card transactions dataset.
 
-If you want to run the demo with the original data, download it from Kaggle and place `creditcard.csv` under `data/` (see `README.md`).
+To run the project with the original data, download it from Kaggle and place `creditcard.csv` under `data/` (see `README.md`).
 
 ### Source
 

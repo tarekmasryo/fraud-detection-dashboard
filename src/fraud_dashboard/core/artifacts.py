@@ -13,6 +13,7 @@ try:  # pragma: no cover
 except Exception:  # pragma: no cover
     InconsistentVersionWarning = Warning
 
+from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.thresholds import normalize_model_key
 
 
@@ -27,8 +28,12 @@ def project_root() -> Path:
 
 
 def artifacts_dir(root: Path | None = None) -> Path:
-    base = root or project_root()
-    return base / "artifacts"
+    if root is not None:
+        return root / "artifacts"
+    artifact_dir = Path(get_settings().model_artifact_dir)
+    if artifact_dir.is_absolute():
+        return artifact_dir
+    return project_root() / artifact_dir
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -123,6 +128,13 @@ def load_bundle(root: Path | None = None) -> dict[str, Any]:
 
     metadata = load_metadata(root)
     thresholds = load_thresholds(root)
+    try:
+        from fraud_dashboard.core.policy import load_policy, policy_to_thresholds
+
+        policy = load_policy(root)
+        thresholds = {**thresholds, **policy_to_thresholds(policy)}
+    except Exception:
+        policy = {}
     models = load_models(root)
     schema = (metadata or {}).get("schema", {})
 
@@ -131,6 +143,7 @@ def load_bundle(root: Path | None = None) -> dict[str, Any]:
         "metadata": metadata,
         "schema": schema,
         "thresholds": thresholds,
+        "policy": policy,
         "models": models,
     }
 
@@ -144,7 +157,9 @@ def check_env_versions(metadata: dict[str, Any]) -> list[str]:
     expected_py = env.get("python")
     if expected_py:
         cur_py = ".".join(map(str, sys.version_info[:3]))
-        if cur_py != expected_py:
+        expected_major_minor = ".".join(str(expected_py).split(".")[:2])
+        cur_major_minor = ".".join(map(str, sys.version_info[:2]))
+        if cur_major_minor != expected_major_minor:
             warnings.append(f"Python mismatch: expected {expected_py}, running {cur_py}.")
 
     expected_skl = env.get("scikit_learn")

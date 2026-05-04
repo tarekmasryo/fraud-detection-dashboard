@@ -8,7 +8,7 @@ not automatically include ``./src`` on the import path. That can cause:
     ModuleNotFoundError: No module named 'fraud_dashboard'
 
 We defensively add ``./src`` to ``sys.path`` so the UI runs smoothly even in
-"quick demo" mode.
+"quick local run" mode.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ if SRC.exists():
 
 
 def main() -> None:
-    # Local import avoids ruff E402 while still supporting "quick demo" mode.
+    # Local import avoids ruff E402 while still supporting "quick local run" mode.
     from fraud_dashboard.ui.app import main as ui_main
 
     ui_main()

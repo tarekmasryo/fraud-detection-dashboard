@@ -1,6 +1,6 @@
 {
-  "artifact_version": "v1",
-  "trained_at": null,
+  "artifact_version": "fraud-risk-ops-v0.1.0",
+  "trained_at": "2026-05-03T00:00:00Z",
   "env": {
     "python": "3.11.2",
     "platform": "Linux-4.4.0-x86_64-with-glibc2.36",
@@ -52,5 +52,33 @@
       "Amount"
     ]
   },
-  "thresholds_file": "thresholds.json"
+  "thresholds_file": "policy.json",
+  "release": {
+    "project": "fraud-risk-ops-platform",
+    "version": "0.1.0",
+    "purpose": "ops_platform_reference_artifact",
+    "runtime_policy": "fail_closed_on_artifact_runtime_mismatch"
+  },
+  "metrics": {
+    "note": "Packaged reference artifacts are included for reproducible app review. Operational model quality should be regenerated with scripts/train.py, which selects thresholds on a calibration split and reports metrics on a separate holdout test split.",
+    "status": "reference_artifact_not_operational_benchmark",
+    "training_script_contract": "train -> calibration/threshold_selection -> holdout_test/reporting"
+  },
+  "artifact_integrity": {
+    "algorithm": "sha256",
+    "expected_sha256": {
+      "rf_calibrated.joblib": "aec4e0672b4bd45648f636683c6e3974074c99f0c4122b16a0dde2aa2da416a0",
+      "rf_pipe.joblib": "d073cfad7ab0fc5252ac396d0f42b1686f3e76e457c002b83e449e89c9e2311f",
+      "xgb_calibrated.joblib": "3ffdf08ea6376ad6cf2710411356559a599ec5d4e58945307adbba45eb62b854",
+      "xgb_pipe.joblib": "70352d1808104d7d96b83d6ae18d3a3a2059e44836da58ebd8177c034f959052",
+      "policy.json": "cd40e3f24c10879d910d77fd61f7edde02433fc1b2a0653acb478acf049b6965",
+      "thresholds.json": "67d1f55093666a8a21f94d3bc4b0a014e040a240181de232ac2a3a655eaf21d4"
+    },
+    "note": "Readiness validates these expected checksums for model and policy artifacts. metadata.json stores the manifest and is reported separately."
+  },
+  "split_policy": {
+    "packaged_artifacts": "reference-only historical artifacts",
+    "training_script": "separate train, calibration, and holdout test splits",
+    "reported_metrics": "holdout_test after regeneration"
+  }
 }

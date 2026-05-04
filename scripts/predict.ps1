@@ -4,7 +4,9 @@ param(
   [string]$Model = "rf",
   [Nullable[double]]$Threshold = $null,
   [switch]$UseQuery,
-  [string]$JsonFile = ""
+  [string]$JsonFile = "",
+  [string]$ApiKey = "",
+  [string]$BearerToken = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,7 +35,7 @@ if ($Threshold -ne $null) {
 }
 $body = $payload | ConvertTo-Json -Depth 10 -Compress
 
-$uri = "$ApiUrl/predict"
+$uri = "$ApiUrl/v1/predictions"
 if ($UseQuery) {
   $qs = "model=$Model"
   if ($Threshold -ne $null) { $qs = "$qs&threshold=$Threshold" }
@@ -42,5 +44,12 @@ if ($UseQuery) {
 Write-Host "POST $uri" -ForegroundColor Cyan
 Write-Host $body
 
-$resp = Invoke-RestMethod -Method Post -Uri $uri -ContentType "application/json" -Body $body
+$headers = @{}
+if ($ApiKey -ne "") { $headers["X-API-Key"] = $ApiKey }
+if ($BearerToken -ne "") {
+  $token = $BearerToken -replace "^Bearer\s+", ""
+  $headers["Authorization"] = "Bearer $token"
+}
+
+$resp = Invoke-RestMethod -Method Post -Uri $uri -ContentType "application/json" -Headers $headers -Body $body
 $resp | ConvertTo-Json -Depth 10

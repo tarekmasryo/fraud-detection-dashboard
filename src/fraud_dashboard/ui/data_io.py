@@ -43,7 +43,10 @@ def try_load_default_dataset() -> tuple[pd.DataFrame | None, str]:
                 continue
     spec = SyntheticCreditcardSpec()
     df = generate_synthetic_creditcard(spec)
-    return df, "Loaded demo dataset (synthetic). Upload a real CSV for meaningful results."
+    return (
+        df,
+        "Loaded synthetic sample dataset. Upload a compatible CSV for project-specific results.",
+    )
 
 
 def get_active_dataframe(uploaded_file) -> tuple[pd.DataFrame, str]:

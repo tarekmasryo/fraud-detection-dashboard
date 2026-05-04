@@ -7,9 +7,23 @@ from typing import Any, Protocol
 
 import numpy as np
 import pandas as pd
-import streamlit as st
+
+try:
+    import streamlit as st
+except ModuleNotFoundError:  # pragma: no cover - keeps non-UI unit tests lightweight
+
+    class _StreamlitCacheFallback:
+        @staticmethod
+        def cache_resource(*_args, **_kwargs):
+            def decorator(fn):
+                return fn
+
+            return decorator
+
+    st = _StreamlitCacheFallback()
 
 from fraud_dashboard.core.artifacts import load_bundle, load_thresholds
+from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.predict import predict_proba
 from fraud_dashboard.ui.api_client import ApiConfig, fetch_metadata, ping_ok, predict_batch
 
@@ -30,7 +44,12 @@ class Predictor(Protocol):
     def schema_features(self) -> list[str]: ...
 
     def predict_proba_batch(
-        self, df_features: pd.DataFrame, *, model_key: str
+        self,
+        df_features: pd.DataFrame,
+        *,
+        model_key: str,
+        threshold: float | None = None,
+        policy: str | None = None,
     ) -> tuple[np.ndarray, float]: ...
 
 
@@ -63,8 +82,14 @@ class LocalPredictor:
         return list(feats)
 
     def predict_proba_batch(
-        self, df_features: pd.DataFrame, *, model_key: str
+        self,
+        df_features: pd.DataFrame,
+        *,
+        model_key: str,
+        threshold: float | None = None,
+        policy: str | None = None,
     ) -> tuple[np.ndarray, float]:
+        _ = threshold, policy
         t0 = time.perf_counter()
         model = self._bundle["models"][model_key]
         probs = predict_proba(model, df_features)
@@ -96,38 +121,88 @@ class ApiPredictor:
         feats = schema.get("features") or []
         return list(feats)
 
+    def _max_batch_records(self) -> int:
+        raw_limit = (self._metadata().get("limits") or {}).get("max_batch_records", 1000)
+        try:
+            limit = int(raw_limit)
+        except (TypeError, ValueError):
+            limit = 1000
+        return max(1, limit)
+
     def predict_proba_batch(
-        self, df_features: pd.DataFrame, *, model_key: str
+        self,
+        df_features: pd.DataFrame,
+        *,
+        model_key: str,
+        threshold: float | None = None,
+        policy: str | None = None,
     ) -> tuple[np.ndarray, float]:
         feats = list(df_features.columns)
         records = df_features[feats].to_dict(orient="records")
+        chunk_size = self._max_batch_records()
         t0 = time.perf_counter()
-        out = predict_batch(cfg=self.cfg, model=model_key, records=records)
+        probs: list[float] = []
+        for start in range(0, len(records), chunk_size):
+            chunk = records[start : start + chunk_size]
+            out = predict_batch(
+                cfg=self.cfg,
+                model=model_key,
+                records=chunk,
+                threshold=threshold if policy is None else None,
+                policy=policy,
+            )
+            probs.extend(float(r["proba_fraud"]) for r in out.get("results", []))
         dt = time.perf_counter() - t0
-        probs = [r["proba_fraud"] for r in out.get("results", [])]
+        if len(probs) != len(records):
+            raise RuntimeError(
+                f"API returned {len(probs)} predictions for {len(records)} input records."
+            )
         return np.asarray(probs, dtype=float), float(dt)
 
 
-def resolve_predictor(mode: str, api_url: str) -> tuple[Predictor, str]:
+def resolve_predictor(
+    mode: str,
+    api_url: str,
+    *,
+    api_key: str | None = None,
+    bearer_token: str | None = None,
+) -> tuple[Predictor, str]:
     """Select predictor given mode.
 
     mode: "Auto", "API", "Local"
     returns: (predictor, status_message)
     """
 
-    api_cfg = ApiConfig(base_url=api_url.rstrip("/"), timeout_s=15.0)
+    api_cfg = ApiConfig(
+        base_url=api_url.rstrip("/"),
+        timeout_s=15.0,
+        api_key=api_key or None,
+        bearer_token=bearer_token or None,
+    )
 
     if mode == "Local":
         return LocalPredictor(), "Using local artifacts."
     if mode == "API":
         if not ping_ok(api_cfg):
-            return LocalPredictor(), "API not reachable → fell back to local artifacts."
+            if get_settings().allow_local_fallback:
+                return (
+                    LocalPredictor(),
+                    "API not reachable → fell back to local artifacts (local fallback enabled).",
+                )
+            raise RuntimeError(
+                "API mode selected but backend is not reachable and ALLOW_LOCAL_FALLBACK=false."
+            )
         return ApiPredictor(api_cfg), "Using FastAPI backend."
 
     # Auto
     if ping_ok(api_cfg):
         return ApiPredictor(api_cfg), "Auto: using FastAPI backend."
-    return LocalPredictor(), "Auto: API not reachable → using local artifacts."
+    if get_settings().allow_local_fallback:
+        return (
+            LocalPredictor(),
+            "Auto: API not reachable → using local artifacts (local fallback enabled).",
+        )
+    raise RuntimeError("Auto mode cannot reach API and ALLOW_LOCAL_FALLBACK=false.")
 
 
 def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:
@@ -135,7 +210,27 @@ def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:
     mode = st.sidebar.radio("Inference mode", ["Auto", "API", "Local"], horizontal=True)
     default_url = os.getenv("FRAUD_API_URL", "http://127.0.0.1:8000")
     api_url = st.sidebar.text_input("FastAPI base URL", value=default_url)
-    predictor, msg = resolve_predictor(mode, api_url)
+
+    with st.sidebar.expander("Protected API auth", expanded=False):
+        api_key = st.text_input(
+            "API key",
+            value=os.getenv("FRAUD_API_KEY", ""),
+            type="password",
+            help="Sent as X-API-Key when REQUIRE_AUTH=true.",
+        )
+        bearer_token = st.text_input(
+            "Bearer token",
+            value=os.getenv("FRAUD_BEARER_TOKEN", ""),
+            type="password",
+            help="Optional JWT from POST /v1/auth/login. API key is usually simpler for local review.",
+        )
+
+    predictor, msg = resolve_predictor(
+        mode,
+        api_url,
+        api_key=api_key.strip() or None,
+        bearer_token=bearer_token.strip() or None,
+    )
 
     if predictor.info().kind == "api":
         st.sidebar.success("API reachable")
@@ -144,5 +239,9 @@ def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:
 
     st.sidebar.caption(msg)
 
-    meta = {"mode": mode, "api_url": api_url.rstrip("/")}
+    meta = {
+        "mode": mode,
+        "api_url": api_url.rstrip("/"),
+        "auth_configured": bool(api_key.strip() or bearer_token.strip()),
+    }
     return predictor, meta

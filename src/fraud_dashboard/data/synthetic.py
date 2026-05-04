@@ -15,7 +15,7 @@ class SyntheticCreditcardSpec:
 
 
 def generate_synthetic_creditcard(spec: SyntheticCreditcardSpec = SyntheticCreditcardSpec()) -> pd.DataFrame:
-    """Generate a small, self-contained demo dataset similar to the classic credit-card fraud schema.
+    """Generate a small, self-contained synthetic dataset similar to the classic credit-card fraud schema.
 
     Columns:
       - Time (float): seconds since the first transaction
