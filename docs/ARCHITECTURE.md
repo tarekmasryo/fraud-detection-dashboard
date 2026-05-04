@@ -8,7 +8,6 @@ The design goal is **production-structured and inspectable**: enough operational
 
 ## System context
 
-
 ```mermaid
 flowchart LR
   Analyst["Analyst / Reviewer"] --> Console["Streamlit Review Console"]
@@ -202,6 +201,6 @@ The release includes protected API flows, configurable CORS, and explicit secret
 
 ## Why this architecture is intentionally compact
 
-This repository implements platform engineering around ML decisions without shipping unnecessary public complexity. The release keeps multi-tenancy, billing, Kubernetes, a model-registry service, and full retraining orchestration outside scope so the implemented system remains runnable, focused, and technically inspectable.
+The repo demonstrates platform engineering around ML decisions without shipping unnecessary public complexity. The release keeps multi-tenancy, billing, Kubernetes, a model-registry service, and full retraining orchestration outside scope so the implemented system remains runnable, focused, and technically inspectable.
 
 The intended signal is clear: **production-minded system boundaries around ML risk decisions**.
