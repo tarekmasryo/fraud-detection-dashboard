@@ -74,5 +74,5 @@
       "max": 1.0
     }
   ],
-  "metrics_boundary": "Packaged thresholds are suitable for local review workflows; operational metrics should be regenerated on the target dataset with a separate holdout test split."
+  "metrics_boundary": "Packaged thresholds are suitable for local review workflows; operational metrics should be regenerated on the target dataset with a separate holdout test split"
 }

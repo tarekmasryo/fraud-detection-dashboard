@@ -8,6 +8,7 @@ The design goal is **production-structured and inspectable**: enough operational
 
 ## System context
 
+
 ```mermaid
 flowchart LR
   Analyst["Analyst / Reviewer"] --> Console["Streamlit Review Console"]
