@@ -46,7 +46,7 @@ This project demonstrates those production-minded boundaries around an ML decisi
 | **Persistence** | SQLite operations store for prediction requests, row-level predictions, audit logs, and batch jobs. |
 | **Batch Work** | Docker Compose runs API + worker; SQLite is source of truth and Redis is a wake-up queue. |
 | **Observability** | `/metrics`, `/v1/metrics/summary`, Prometheus config, and provisioned Grafana dashboard. |
-| **Quality Gates** | Ruff, Pytest, coverage config, Docker test stage, `.dockerignore`, `.gitignore`, and CI workflow. |
+| **Quality Gates** | Ruff, Pytest, coverage config, Dockerfile, Docker Compose, `.dockerignore`, `.gitignore`, and CI workflow. |
 
 ---
 
@@ -128,11 +128,13 @@ Remove local Docker volumes when you want a clean runtime store:
 docker compose down -v
 ```
 
+If Docker Compose fails with `Bind for 0.0.0.0:6379 failed: port is already allocated`, another Redis instance is already using the host port. Redis is only required inside the Docker network by the API and worker, so you can remove the Redis host `ports` mapping or change it to `6380:6379`.
+
 ---
 
 ## 🧪 Quickstart locally
 
-> The official runtime target is Python 3.11. The shipped artifacts are checked against the pinned runtime in `requirements.txt`.
+> The official runtime target is Python 3.11. Patch-level Python 3.11 differences may appear as readiness warnings when artifact checks and sample scoring pass.
 
 ```bash
 python3.11 -m venv .venv
@@ -151,8 +153,10 @@ python api.py
 Run UI:
 
 ```bash
-python -m streamlit run app.py
+FRAUD_API_URL=http://127.0.0.1:8000 python -m streamlit run app.py --server.port 8501
 ```
+
+Any available Streamlit port is fine. For example, use `--server.port 8503` if `8501` is already in use. The important part is that `FRAUD_API_URL` points to the running API.
 
 Run quality checks:
 
@@ -160,6 +164,27 @@ Run quality checks:
 ruff format --check .
 ruff check .
 pytest -q --cov=src --cov-fail-under=75
+```
+
+### Windows PowerShell
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -U pip setuptools wheel
+pip install -r requirements.txt -r requirements-dev.txt
+$env:PYTHONPATH="src"
+$env:REQUIRE_AUTH="false"
+python -m uvicorn fraud_dashboard.api.main:app --host 127.0.0.1 --port 8000
+```
+
+In a second PowerShell window:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH="src"
+$env:FRAUD_API_URL="http://127.0.0.1:8000"
+python -m streamlit run app.py --server.port 8501
 ```
 
 ---
@@ -190,6 +215,10 @@ GET  /v1/metrics/summary
 GET  /v1/model-versions
 ```
 
+Prediction requests use the packaged credit-card fraud feature contract: `Time`, `V1` through `V28`, and `Amount`. The default model key is `rf`; `xgb` is also available when the matching artifact is present. Use `POST /v1/predictions` for one record and `POST /v1/predictions/batch` for multiple records.
+
+For interactive request testing, open `http://127.0.0.1:8000/docs`. For the full request and response contract, see [`docs/API.md`](docs/API.md).
+
 Example response shape:
 
 ```json
@@ -210,8 +239,6 @@ Example response shape:
   "request_id": "pred_..."
 }
 ```
-
-See [`docs/API.md`](docs/API.md).
 
 ---
 
@@ -250,7 +277,7 @@ The readiness check validates:
 - runtime compatibility against metadata
 - sample scoring without compatibility fallback
 
-By default, readiness **fails closed** on runtime mismatch. The API does not silently replace a broken serialized model with heuristic scores.
+Readiness fails closed for missing artifacts, checksum mismatches, schema/policy errors, or incompatible runtime failures. Patch-level Python 3.11 differences may be reported as warnings when artifact checks and sample scoring pass. The API does not silently replace a broken serialized model with heuristic scores.
 
 ---
 
@@ -269,7 +296,7 @@ Copy `.env.example` and adjust values as needed.
 | `CORS_ALLOW_ORIGINS` | Comma-separated browser origins allowed for API clients | local Streamlit origins |
 | `DEMO_API_KEY` / `DEMO_API_KEY_HASH` | Backend API key or HMAC digest when auth is enabled | replace before protected runs |
 | `FRAUD_API_KEY` / `FRAUD_BEARER_TOKEN` | Optional Streamlit-to-API auth forwarding | empty |
-| `STRICT_ARTIFACT_RUNTIME` | Fail `/ready` when artifacts/runtime mismatch | `true` |
+| `STRICT_ARTIFACT_RUNTIME` | Fail `/ready` on incompatible artifact/runtime failures | `true` |
 | `ALLOW_ARTIFACT_COMPATIBILITY_FALLBACK` | Opt-in local UI compatibility fallback only | `false` |
 | `ALLOW_LOCAL_FALLBACK` | Allow UI to use local artifacts if API is down | `true` |
 | `PROMETHEUS_ENABLED` | Expose Prometheus metrics endpoint | `true` |
@@ -294,7 +321,7 @@ The app refuses insecure local secrets when `REQUIRE_AUTH=true`. It also refuses
 
 ## 🧠 Training and metric boundary
 
-The packaged artifacts are reference artifacts for running and reviewing the platform. They are not presented as operational benchmark claims. To regenerate deployable model artifacts, run `scripts/train.py`; the script now uses separate splits for model training, calibration/threshold selection, and final holdout-test metric reporting.
+The packaged artifacts are reference artifacts for running and reviewing the platform. They are not presented as operational benchmark claims. To regenerate deployable model artifacts, run `scripts/train.py`; the script uses separate splits for model training, calibration/threshold selection, and final holdout-test metric reporting.
 
 ```bash
 python scripts/train.py --data data/creditcard.csv --out artifacts --label Class
