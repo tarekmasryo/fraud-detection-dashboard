@@ -4,7 +4,7 @@ uvicorn==0.30.6
 httpx==0.28.1
 
 pandas==2.2.3
-plotly==5.24.1
+plotly==6.8.0
 joblib==1.4.2
 pillow==12.1.1
 pyyaml==6.0.2
