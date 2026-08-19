@@ -15,4 +15,4 @@ scikit-learn==1.4.2
 numpy==1.26.4
 scipy==1.11.4
 
-prometheus-client==0.21.1
+prometheus-client==0.26.0
